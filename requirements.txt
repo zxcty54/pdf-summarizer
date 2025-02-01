@@ -2,4 +2,5 @@ flask
 pdfplumber
 transformers
 torch==1.13.0
+flask-cors
 
