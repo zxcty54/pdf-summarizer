@@ -1,6 +1,5 @@
 flask
-pdfplumber
-transformers
-torch==1.13.0
+yfinance
+gunicorn
 flask-cors
 
