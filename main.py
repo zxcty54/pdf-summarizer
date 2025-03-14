@@ -1,31 +1,43 @@
-from flask import Flask, request, jsonify
-import pdfplumber
-from transformers import pipeline
-
-# Load the free Hugging Face summarizer
-summarizer = pipeline("summarization", model="t5-small")
+import os
+from flask import Flask, jsonify
+from flask_cors import CORS
+import yfinance as yf
 
 app = Flask(__name__)
+CORS(app)
 
-@app.route("/")
+@app.route('/')
 def home():
-    return "PDF Summarizer API is Running!"
+    return "Market Indices API is Running!"
 
-@app.route("/summarize", methods=["POST"])
-def summarize_pdf():
-    if "file" not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
+@app.route('/market-indices')
+def get_market_indices():
+    try:
+        indices = {
+            "Dow Jones": "^DJI",
+            "S&P 500": "^GSPC",
+            "NASDAQ": "^IXIC",
+            "NIFTY 50": "^NSEI",
+            "SENSEX": "^BSESN",
+            "BANK NIFTY": "^NSEBANK"
+        }
+        
+        index_prices = {}
+        for name, symbol in indices.items():
+            stock = yf.Ticker(symbol)
+            history = stock.history(period="1d")
 
-    file = request.files["file"]
-    
-    # Extract text from PDF
-    with pdfplumber.open(file) as pdf:
-        text = "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
+            if history.empty:
+                index_prices[name] = "N/A"
+            else:
+                index_prices[name] = round(history["Close"].iloc[-1], 2)
 
-    text = text[:500]  # Truncate if too long
-    summary = summarizer(text, max_length=200, min_length=50, do_sample=False)
+        return jsonify(index_prices)
 
-    return jsonify({"summary": summary[0]["summary_text"]})
+    except Exception as e:
+        print("Error fetching market indices:", e)
+        return jsonify({"error": "Unable to fetch market indices"}), 500
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
