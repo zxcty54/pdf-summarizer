@@ -25,16 +25,20 @@ def get_market_indices():
         index_data = {}
         for name, symbol in indices.items():
             stock = yf.Ticker(symbol)
-            history = stock.history(period="1d")
+            history = stock.history(period="2d")  # Fetch last 2 days for previous close
+            fast_info = stock.fast_info  # Fast lookup for prices
 
             if history.empty:
                 index_data[name] = {"current_price": "N/A", "percent_change": "N/A"}
             else:
-                open_price = history["Open"].iloc[-1]
-                close_price = history["Close"].iloc[-1]
+                # Fetch close price
+                close_price = fast_info["last_price"] if "last_price" in fast_info else history["Close"].iloc[-1]
+                
+                # Fetch previous close price
+                previous_close = fast_info["previous_close"] if "previous_close" in fast_info else history["Close"].iloc[-2]
 
                 # Calculate percentage change
-                percent_change = ((close_price - open_price) / open_price) * 100
+                percent_change = ((close_price - previous_close) / previous_close) * 100
 
                 index_data[name] = {
                     "current_price": round(close_price, 2),
