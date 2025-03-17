@@ -22,17 +22,40 @@ def get_market_indices():
             "BANK NIFTY": "^NSEBANK"
         }
         
-        index_prices = {}
+        index_data = {}
         for name, symbol in indices.items():
             stock = yf.Ticker(symbol)
-            history = stock.history(period="1d")
+            hist = stock.history(period="1d", interval="5m")  # Fetch intraday data for real-time updates
+            
+            if hist.empty:
+                index_data[name] = {"error": "Data not available"}
+                continue
 
-            if history.empty:
-                index_prices[name] = "N/A"
-            else:
-                index_prices[name] = round(history["Close"].iloc[-1], 2)
+            latest_price = hist["Close"].iloc[-1]  # Latest price
+            open_price = hist["Open"].iloc[0]  # Market open price
+            high_price = hist["High"].max()  # High of the day
+            low_price = hist["Low"].min()  # Low of the day
+            close_price = hist["Close"].iloc[-1]  # Last closing price
+            
+            percent_change = ((latest_price - open_price) / open_price) * 100
+            
+            color = "same"
+            if latest_price > open_price:
+                color = "green"
+            elif latest_price < open_price:
+                color = "red"
 
-        return jsonify(index_prices)
+            index_data[name] = {
+                "current_price": round(latest_price, 2),
+                "open": round(open_price, 2),
+                "high": round(high_price, 2),
+                "low": round(low_price, 2),
+                "close": round(close_price, 2),
+                "percent_change": round(percent_change, 2),
+                "color": color
+            }
+
+        return jsonify(index_data)
 
     except Exception as e:
         print("Error fetching market indices:", e)
