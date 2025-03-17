@@ -23,33 +23,39 @@ def get_market_indices():
         }
         
         index_data = {}
+
         for name, symbol in indices.items():
             stock = yf.Ticker(symbol)
-            history = stock.history(period="2d")  # Fetch last 2 days for previous close
-            fast_info = stock.fast_info  # Fast lookup for prices
+            history = stock.history(period="1d")
 
-            if history.empty:
+            # ✅ **Check if data is available**
+            if history.empty or len(history) < 1:
+                print(f"⚠ No data for {name} ({symbol})")
                 index_data[name] = {"current_price": "N/A", "percent_change": "N/A"}
-            else:
-                # Fetch close price
-                close_price = fast_info["last_price"] if "last_price" in fast_info else history["Close"].iloc[-1]
-                
-                # Fetch previous close price
-                previous_close = fast_info["previous_close"] if "previous_close" in fast_info else history["Close"].iloc[-2]
+                continue
 
-                # Calculate percentage change
-                percent_change = ((close_price - previous_close) / previous_close) * 100
+            # ✅ **Safely access Open and Close values**
+            open_price = history["Open"].iloc[-1] if "Open" in history else None
+            close_price = history["Close"].iloc[-1] if "Close" in history else None
 
-                index_data[name] = {
-                    "current_price": round(close_price, 2),
-                    "percent_change": round(percent_change, 2)
-                }
+            if open_price is None or close_price is None:
+                print(f"⚠ Missing Open/Close data for {name}")
+                index_data[name] = {"current_price": "N/A", "percent_change": "N/A"}
+                continue
+
+            # ✅ **Calculate percentage change safely**
+            percent_change = ((close_price - open_price) / open_price) * 100 if open_price != 0 else 0
+
+            index_data[name] = {
+                "current_price": round(close_price, 2),
+                "percent_change": round(percent_change, 2)
+            }
 
         return jsonify(index_data)
 
     except Exception as e:
-        print("Error fetching market indices:", e)
-        return jsonify({"error": "Unable to fetch market indices"}), 500
+        print("🚨 Error fetching market indices:", e)
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
