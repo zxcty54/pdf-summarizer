@@ -26,29 +26,30 @@ def get_market_indices():
 
         for name, symbol in indices.items():
             stock = yf.Ticker(symbol)
-            history = stock.history(period="1d")
+            history = stock.history(period="2d")  # ✅ Fetch last 2 days of data
 
-            # ✅ **Check if data is available**
-            if history.empty or len(history) < 1:
-                print(f"⚠ No data for {name} ({symbol})")
+            # ✅ **Check if enough data is available**
+            if history.empty or len(history) < 2:
+                print(f"⚠ No sufficient data for {name} ({symbol})")
                 index_data[name] = {"current_price": "N/A", "percent_change": "N/A"}
                 continue
 
-            # ✅ **Safely access Open and Close values**
-            open_price = history["Open"].iloc[-1] if "Open" in history else None
-            close_price = history["Close"].iloc[-1] if "Close" in history else None
+            # ✅ **Safely access Close prices**
+            prev_close = history["Close"].iloc[-2]  # Previous Close (Day before)
+            current_price = history["Close"].iloc[-1]  # Latest Close
 
-            if open_price is None or close_price is None:
-                print(f"⚠ Missing Open/Close data for {name}")
+            if prev_close is None or current_price is None:
+                print(f"⚠ Missing Close data for {name}")
                 index_data[name] = {"current_price": "N/A", "percent_change": "N/A"}
                 continue
 
-            # ✅ **Calculate percentage change safely**
-            percent_change = ((close_price - open_price) / open_price) * 100 if open_price != 0 else 0
+            # ✅ **Calculate percentage change using Previous Close**
+            percent_change = ((current_price - prev_close) / prev_close) * 100 if prev_close != 0 else 0
 
             index_data[name] = {
-                "current_price": round(close_price, 2),
-                "percent_change": round(percent_change, 2)
+                "current_price": round(current_price, 2),
+                "percent_change": round(percent_change, 2),
+                "previous_close": round(prev_close, 2)  # ✅ Added Previous Close
             }
 
         return jsonify(index_data)
