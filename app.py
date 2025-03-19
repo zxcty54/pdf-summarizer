@@ -13,6 +13,7 @@ latest_index_data = {}
 
 def fetch_market_indices():
     global latest_index_data
+    print("🔄 Fetching market indices...")  # Log when the function runs
     try:
         indices = {
             "Dow Jones": "^DJI",
@@ -54,14 +55,16 @@ def fetch_market_indices():
             }
 
         latest_index_data = index_data
+        print("✅ Market indices updated:", latest_index_data)  # Log the updated data
 
     except Exception as e:
         print("🚨 Error fetching market indices:", e)
 
 # Schedule the fetch_market_indices function to run every 2 minutes
 scheduler = BackgroundScheduler()
-scheduler.add_job(func=fetch_market_indices, trigger="interval", minutes=2)  # Changed to 2 minutes
+scheduler.add_job(func=fetch_market_indices, trigger="interval", minutes=2)
 scheduler.start()
+print("⏰ Scheduler started. Fetching market indices every 2 minutes.")
 
 # Shut down the scheduler when exiting the app
 atexit.register(lambda: scheduler.shutdown())
@@ -72,6 +75,7 @@ def home():
 
 @app.route('/market-indices')
 def get_market_indices():
+    print("📄 Returning market indices data:", latest_index_data)  # Log the data being returned
     return jsonify(latest_index_data)
 
 if __name__ == '__main__':
