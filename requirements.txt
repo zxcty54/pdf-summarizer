@@ -2,4 +2,5 @@ flask
 yfinance
 gunicorn
 flask-cors
+APScheduler==3.10.1
 
