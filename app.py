@@ -1,6 +1,7 @@
 import os
 import threading
 import time
+import datetime
 from flask import Flask, jsonify
 from flask_cors import CORS
 import yfinance as yf
@@ -26,15 +27,16 @@ indices = {
 def fetch_market_data():
     global cached_data, last_updated
     while True:
+        print(f"\n⏳ Fetching market data at {datetime.datetime.now()}...")
         try:
             index_data = {}
             for name, symbol in indices.items():
+                print(f"📡 Fetching {name} ({symbol})")
                 stock = yf.Ticker(symbol)
-                stock.history_metadata = {}  # ✅ Fix for missing data
                 history = stock.history(period="2d")
 
                 if history.empty or len(history) < 2:
-                    print(f"⚠ No data for {name} ({symbol})")
+                    print(f"⚠ No data for {name}")
                     index_data[name] = {"current_price": "N/A", "percent_change": "N/A"}
                     continue
 
@@ -53,10 +55,11 @@ def fetch_market_data():
                     "percent_change": round(percent_change, 2),
                     "previous_close": round(prev_close, 2)
                 }
+                print(f"✅ {name} Data: {index_data[name]}")
 
             cached_data = index_data
             last_updated = time.time()
-            print("✅ Market data updated:", cached_data)
+            print("✅ Market Data Updated!")
 
         except Exception as e:
             print("🚨 Error fetching market indices:", e)
@@ -64,13 +67,14 @@ def fetch_market_data():
         time.sleep(15)  # ✅ Fetch data every 15 sec in the background
 
 # ✅ Start Background Thread for Auto-Updating
-thread = threading.Thread(target=fetch_market_data)
-thread.daemon = True
-thread.start()
+def start_data_thread():
+    print("🚀 Starting Market Data Fetching Thread...")
+    thread = threading.Thread(target=fetch_market_data, daemon=True)
+    thread.start()
 
 @app.route('/')
 def home():
-    return "Market Indices API is Running!"
+    return "✅ Market Indices API is Running!"
 
 @app.route('/market-indices')
 def get_market_indices():
@@ -79,5 +83,6 @@ def get_market_indices():
     return jsonify(cached_data)  # ✅ Serve the cached data instantly
 
 if __name__ == '__main__':
+    start_data_thread()
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
