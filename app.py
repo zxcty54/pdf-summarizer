@@ -27,14 +27,11 @@ def fetch_market_data():
     global cached_data, last_updated
     while True:
         try:
-            print("🔄 Fetching market data...")
             index_data = {}
-
             for name, symbol in indices.items():
                 stock = yf.Ticker(symbol)
+                stock.history_metadata = {}  # ✅ Fix for missing data
                 history = stock.history(period="2d")
-
-                print(f"📊 {name} Data:\n{history}")  # Debugging
 
                 if history.empty or len(history) < 2:
                     print(f"⚠ No data for {name} ({symbol})")
@@ -45,7 +42,7 @@ def fetch_market_data():
                 current_price = history["Close"].iloc[-1]
 
                 if prev_close is None or current_price is None:
-                    print(f"⚠ Missing Close price for {name}")
+                    print(f"⚠ Missing Close data for {name}")
                     index_data[name] = {"current_price": "N/A", "percent_change": "N/A"}
                     continue
 
@@ -59,15 +56,12 @@ def fetch_market_data():
 
             cached_data = index_data
             last_updated = time.time()
-            print("✅ Market data updated!", cached_data)  # Debugging
+            print("✅ Market data updated:", cached_data)
 
         except Exception as e:
             print("🚨 Error fetching market indices:", e)
 
         time.sleep(15)  # ✅ Fetch data every 15 sec in the background
-
-# ✅ Fetch data once before starting the thread
-fetch_market_data()
 
 # ✅ Start Background Thread for Auto-Updating
 thread = threading.Thread(target=fetch_market_data)
@@ -76,13 +70,13 @@ thread.start()
 
 @app.route('/')
 def home():
-    return "✅ Market Indices API is Running!"
+    return "Market Indices API is Running!"
 
 @app.route('/market-indices')
 def get_market_indices():
     if not cached_data:
-        return jsonify({"error": "⚠ Data not available yet, please try again in a few seconds."})
-    return jsonify(cached_data)  # ✅ Serve cached data instantly
+        return jsonify({"error": "Market data is not available yet. Try again later."}), 503
+    return jsonify(cached_data)  # ✅ Serve the cached data instantly
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
